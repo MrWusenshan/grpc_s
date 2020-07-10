@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/grpclog"
+	"google.golang.org/grpc/metadata"
 	"net"
 )
 
@@ -17,9 +19,34 @@ type helloService struct{}
 var HelloService = helloService{}
 
 func (h helloService) SayHello(ctx context.Context, req *hello.HelloRequest) (res *hello.HelloResponse, err error) {
-	res = new(hello.HelloResponse)
-	res.Message = fmt.Sprintf("Hello %s.", req.Name)
-	return res, nil
+	// 解析metada中的信息并验证
+
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok {
+		return nil, grpc.Errorf(codes.Unauthenticated, "无Token认证信息")
+	}
+
+	var (
+		appid  string
+		appkey string
+	)
+
+	if val, ok := md["appid"]; ok {
+		appid = val[0]
+	}
+
+	if val, ok := md["appkey"]; ok {
+		appkey = val[0]
+	}
+
+	if appid != "101010" || appkey != "i am key" {
+		return nil, grpc.Errorf(codes.Unauthenticated, "Token认证信息无效: appid=%s, appkey=%s", appid, appkey)
+	}
+
+	resp := new(hello.HelloResponse)
+	resp.Message = fmt.Sprintf("Hello %s.\nToken info: appid=%s,appkey=%s", req.Name, appid, appkey)
+
+	return resp, nil
 }
 
 func main() {

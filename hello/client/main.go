@@ -12,17 +12,44 @@ import (
 const (
 	// Address gRPC服务地址
 	Address = "127.0.0.1:50052"
+	// OpenTLS 是否开启TLS认证
+	OpenTLS = true
 )
 
-func main() {
+// customCredential 自定义认证
+type customCredential struct{}
 
-	// TLS连接  记得把server name改成你写的服务器地址
-	creds, err := credentials.NewClientTLSFromFile("keys/server.pem", "www.testgrpc.grpc")
-	if err != nil {
-		grpclog.Fatalf("Failed to create TLS credentials %v", err)
+// GetRequestMetadata 实现自定义认证接口
+func (c customCredential) GetRequestMetadata(ctx context.Context, uri ...string) (map[string]string, error) {
+	return map[string]string{
+		"appid":  "101010",
+		"appkey": "i am key",
+	}, nil
+}
+
+// RequireTransportSecurity 自定义认证是否开启TLS
+func (c customCredential) RequireTransportSecurity() bool {
+	return OpenTLS
+}
+
+func main() {
+	var err error
+	var opts []grpc.DialOption
+	// TLS连接
+	if OpenTLS {
+		creds, err := credentials.NewClientTLSFromFile("keys/server.pem", "www.testgrpc.grpc")
+		if err != nil {
+			grpclog.Fatalf("Failed to create TLS credentials %v", err)
+		}
+		opts = append(opts, grpc.WithTransportCredentials(creds))
+	} else {
+		opts = append(opts, grpc.WithInsecure())
 	}
-	// 连接
-	conn, err := grpc.Dial(Address, grpc.WithTransportCredentials(creds))
+
+	// 使用自定义认证
+	opts = append(opts, grpc.WithPerRPCCredentials(new(customCredential)))
+
+	conn, err := grpc.Dial(Address, opts...)
 	if err != nil {
 		grpclog.Fatalln(err)
 	}
