@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+//编译hello.proto
+// protoc -I . --go_out=plugins=grpc:. ./hello.proto
+
+
+package hello;
+
+//定义hello服务
+service Hello{
+  rpc SayHello(HelloRequest) returns(HelloResponse){}
+}
+//定义 hello request 结构
+message HelloRequest{
+  string name = 1;
+}
+
+//定义 hello response 结构
+message HelloResponse{
+  string message = 1;
+}
