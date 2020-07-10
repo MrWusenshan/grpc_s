@@ -7,6 +7,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/grpclog"
+	"time"
 )
 
 const (
@@ -48,6 +49,8 @@ func main() {
 
 	// 使用自定义认证
 	opts = append(opts, grpc.WithPerRPCCredentials(new(customCredential)))
+	// 指定客户端interceptor
+	opts = append(opts, grpc.WithUnaryInterceptor(interceptor))
 
 	conn, err := grpc.Dial(Address, opts...)
 	if err != nil {
@@ -67,4 +70,12 @@ func main() {
 	}
 
 	fmt.Println(res.Message)
+}
+
+// interceptor 客户端拦截器
+func interceptor(ctx context.Context, method string, req, reply interface{}, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+	start := time.Now()
+	err := invoker(ctx, method, req, reply, cc, opts...)
+	fmt.Printf("method=%s req=%v rep=%v duration=%s error=%v\n", method, req, reply, time.Since(start), err)
+	return err
 }
